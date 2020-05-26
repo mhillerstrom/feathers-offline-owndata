@@ -1,0 +1,93 @@
+{
+  "name": "feathers-offline-owndata",
+  "description": "Offline-first realtime owndata replication with optimistic updates.",
+  "version": "0.0.1",
+  "homepage": "https://github.com/feathersjs/feathers-offline-owndata",
+  "main": "lib/",
+  "keywords": [
+    "feathers",
+    "feathers-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feathersjs/feathers-offline-owndata.git"
+  },
+  "author": {
+    "name": "Feathers contributors",
+    "email": "hello@feathersjs.com",
+    "url": "https://feathersjs.com"
+  },
+  "contributors": [],
+  "bugs": {
+    "url": "https://github.com/feathersjs/feathers-offline-owndata/issues"
+  },
+  "engines": {
+    "node": ">= 8"
+  },
+  "scripts": {
+    "add-dist": "npm run clean && npm run build && git add dist/ --force && git commit -am \"Updating dist\"",
+    "clean": "shx rm -rf dist/ && shx mkdir -p dist",
+    "build": "npm run clean && npm run webpack && npm run webpack:production",
+    "webpack": "webpack",
+    "webpack:production": "NODE_ENV=production webpack",
+    "publish": "git push origin --tags && npm run changelog && git push origin",
+    "changelog": "github_changelog_generator && git add CHANGELOG.md && git commit -am \"Updating changelog\"",
+    "release:patch": "npm run add-dist && npm version patch && npm publish",
+    "release:minor": "npm run add-dist && npm version minor && npm publish",
+    "release:major": "npm run add-dist && npm version major && npm publish",
+    "lint": "semistandard --fix",
+    "mocha": "mocha --opts mocha.opts",
+    "coverage": "istanbul cover node_modules/mocha/bin/_mocha -- --opts mocha.opts",
+    "dtslint": "dtslint types",
+    "test": "npm run dtslint && npm run lint && npm run coverage"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "IE 10"
+  ],
+  "semistandard": {
+    "env": [
+      "mocha"
+    ]
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "@feathersjs/commons": "^4.5.3",
+    "@feathersjs/errors": "^4.5.3",
+    "caf": "^9.0.0",
+    "component-emitter": "1.2.1",
+    "debug": "^2.6.8",
+    "feathers-offline-snapshot": "^0.0.1",
+    "feathers-query-filters": "^2.1.2",
+    "md5": "2.2.1",
+    "shortid": "2.2.8",
+    "sift": "^11.0.10",
+    "uuid": "3.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "@feathersjs/feathers": "^4.5.3",
+    "@feathersjs/hooks": "^0.5.0-alpha.0",
+    "babel-loader": "^8.0.6",
+    "chai": "^4.0.0",
+    "dtslint": "^3.0.0",
+    "esm": "^3.2.25",
+    "feathers-hooks-common": "^5.0.3",
+    "feathers-memory": "^4.1.0",
+    "istanbul": "^1.1.0-alpha.1",
+    "lodash": "^4.17.15",
+    "mocha": "^7.0.0",
+    "nyc": "^15.0.1",
+    "reify": "0.17.3",
+    "semistandard": "^14.2.0",
+    "shx": "^0.3.2",
+    "uglifyjs-webpack-plugin": "^2.2.0",
+    "webpack": "^4.41.5",
+    "webpack-cli": "^3.3.10",
+    "webpack-merge": "^4.2.2"
+  }
+}
