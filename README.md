@@ -8,6 +8,16 @@
 
 > Offline-first own-data/own-net replication with optimistic updates.
 
+## Things needing FeathersJS-group attention
+As I'm new at this many details are somewhat of a mystery. I've taken the `feathers-memory` adapter as my template. but please take a look at
+   - all the links above 
+   - `webpack.config.js` and verify its sanity
+   - verify `package.json` is filled out as to your specifications
+   - the `types` directory probably needs a lot of attention
+   - This package probably need some extra documentation. Where should I (or someone else) put this? Do you have some input to what's needed?
+
+> I have a sample Quasar-Cordova-FeathersJS-MongoDB [app](https://github.com/mhillerstrom/Quasar-Cordova) showcasing `feathers-offline-owndata`. It's still not complete, but it will show offline ability.
+
 ## Installation
 
 ```
@@ -20,6 +30,8 @@ npm install feathers-offline-owndata --save
 You can read the docs [here](https://docs.feathersjs.com/guides/offline-first/readme.html).
 
 For both implementations you must assure that the table (or collection) under own-data/own-net control *must* implement both `uuid` and `updatedAt` attributes.
+
+> **Pro tip:** If your key is not `uuid` then you have to manually set the key *before* calling `create` as you have no guarantee that the backend answers.
 
 > **Pro tip:** If you want the back-end to hold all users' data in one table (or collection), then all rows (or documents) must include a user identification (e.g. '`_id`' of `users`) and an appropriate query should be set in the `options` parameter when registering the replicator (e.g. `{query: {userId: <whatever-the-value-is>}}`).
 

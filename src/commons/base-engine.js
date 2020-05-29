@@ -50,7 +50,7 @@ module.exports = class BaseEngine {
     // Determine latest update
     let updatedAt = DOB;
     records.forEach(rec => { updatedAt = (rec.updatedAt > updatedAt) ? rec.updatedAt : updatedAt; });
-    this.store.records.updatedAt = updatedAt;
+    this.store.syncedAt = updatedAt;
 
     if (this._sorter) {
       records.sort(this._sorter);

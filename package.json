@@ -28,7 +28,7 @@
   "scripts": {
     "add-dist": "npm run clean && npm run build && git add dist/ --force && git commit -am \"Updating dist\"",
     "clean": "shx rm -rf dist/ && shx mkdir -p dist",
-    "build": "npm run clean && npm run webpack && npm run webpack:production",
+    "build": "shx rm -rf lib/ && shx cp -R src lib && npm run clean && npm run webpack && npm run webpack:production",
     "webpack": "webpack",
     "webpack:production": "NODE_ENV=production webpack",
     "publish": "git push origin --tags && npm run changelog && git push origin",

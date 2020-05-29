@@ -27,7 +27,7 @@ class Service extends AdapterService {
 
     this._replicator = options.replicator;
     this._engine = this._replicator.engine;
-    const timeout = options.timeout || 2500; // defaults to 2.5 seconds
+    const timeout = options.timeout || 500; // defaults to 0.5 seconds
     this.timeout = timeout;
 
     if (!this._engine.useUuid) {
@@ -130,7 +130,7 @@ class Service extends AdapterService {
     this._addQueuedNetEvent('create', newData, shallowClone(newData), params);
 
     // Start actual mutation on remote service
-    this.remoteCreate(shallowClone(newData), params)
+    await this.remoteCreate(shallowClone(newData), params)
       .then(([err, res]) => {
         if (err) {
           if (err.timeout) {
@@ -169,7 +169,7 @@ class Service extends AdapterService {
     this._addQueuedNetEvent('update', newData, getId(newData), shallowClone(newData), params);
 
     // Start actual mutation on remote service
-    this.remoteUpdate(getId(newData), shallowClone(newData), params)
+    await this.remoteUpdate(getId(newData), shallowClone(newData), params)
       .then(([err, res]) => {
         if (err) {
           if (err.timeout) {
@@ -211,7 +211,7 @@ class Service extends AdapterService {
     this._addQueuedNetEvent('patch', newData, getId(newData), shallowClone(newData), params);
 
     // Start actual mutation on remote service
-    this.remotePatch(getId(newData), shallowClone(newData), params)
+    await this.remotePatch(getId(newData), shallowClone(newData), params)
       .then(([err, res]) => {
         if (err) {
           if (err.timeout) {
@@ -254,7 +254,7 @@ class Service extends AdapterService {
     this._addQueuedNetEvent('remove', newData, getId(newData), params);
 
     // Start actual mutation on remote service
-    this.remoteRemove(getId(newData), params)
+    await this.remoteRemove(getId(newData), params)
       .then(([err, res]) => {
         if (err) {
           if (err.timeout) {

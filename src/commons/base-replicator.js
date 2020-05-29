@@ -22,14 +22,16 @@ module.exports = class BaseReplicator {
     return this.engine.listening;
   }
 
-  connect () {
+  connect (newQuery) {
     this.engine.removeListeners();
 
-    let query = this._query;
+    // Added newQuery so you can use logged in users' _id, role, or permission to qualify
+    // Query on replicator definition can be used for limiting to region, app, etc.
+    let query = Object.assign({}, this._query, newQuery);
 
     if (this.engine.useUpdatedAt) {
       // We want to sync records since last sync (or last acknowledged online change)
-      query = Object.assign({}, this._query, { updatedAt: { $gte: new Date(this.engine.store.syncedAt) } });
+      query = Object.assign({}, this._query, newQuery, { updatedAt: { $gte: new Date(this.engine.store.syncedAt) } });
     }
 
     return snapshot(this._service, query)

@@ -8,14 +8,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 const config = {
   entry: './lib',
   output: {
-    library: ['feathers', 'memory'],
+    library: ['feathers', 'owndata'],
     libraryTarget: 'umd',
     path: path.resolve(__dirname, 'dist')
   },
   module: {
     rules: [{
       test: /\.js/,
-      exclude: /node_modules\/(?!(@feathersjs|debug|sift))/,
+      exclude: /node_modules\/(?!(@feathersjs|debug|sift|caf))/,
       loader: 'babel-loader',
       options: {
         presets: ['@babel/preset-env']

@@ -38,9 +38,23 @@ async function getRows (service) {
  * @param {*} allowFail Will we allow the usage of _fail and _timeout?
  */
 function setUpHooks (type, service, allowFail = false) {
+  async function runTimer (context) {
+    if (verbose) {
+      console.time(`${type}.${context.method}.hook timing`);
+      console.log(`timeout set to: client: ${timeout}, server: ${serverTimeout}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, serverTimeout, true))
+      .then(res => {
+        if (verbose) {
+          console.log(`${type}.${context.method}.hook (timeout triggered) res = ${res}`);
+          console.timeEnd(`${type}.${context.method}.hook timing`);
+        }
+      });
+  }
+
   app.service(service).hooks({
     before: {
-      all: context => {
+      all: async context => {
         if (verbose) {
           const data = context.data ? `\n\tdata\t${JSON.stringify(context.data)}` : '';
           const params = context.params ? `\n\tparams\t${JSON.stringify(context.params)}` : '';
@@ -48,21 +62,11 @@ function setUpHooks (type, service, allowFail = false) {
         }
         if (allowFail && context.params.query && context.params.query._fail) { // Passing in param _fail simulates errors
           if (context.params.query._timeout) {
-            if (verbose) {
-              console.time(`${type}.${context.method}.hook timing`);
-              console.log(`timeout set to: client: ${timeout}, server: ${serverTimeout}`);
-            }
-            new Promise(resolve => setTimeout(resolve, serverTimeout, true))
-              .then(res => {
-                if (verbose) {
-                  console.log(`${type}.${context.method}.hook (timeout triggered) res = ${res}`);
-                  console.timeEnd(`${type}.${context.method}.hook timing`);
-                }
+            await runTimer(context)
+              .then(() => {
+                throw new errors.BadRequest(`Fail requested (timeout=${serverTimeout})`);
               });
-          }
-
-          const tout = context.params.query._timeout ? context.params.query._timeout : 'na';
-          throw new errors.BadRequest(`Fail requested (timeout=${tout})`);
+          } else { throw new errors.BadRequest('Fail requested (timeout=na)'); }
         }
       },
       create: [
@@ -134,7 +138,7 @@ module.exports = function (Replicator, desc) {
       });
 
       it('create fails', () => {
-        return clientService.create({ id: 99, uuid: 1099, order: 99 }, { query: { _fail: true, _timeout: true } })
+        return clientService.create({ id: 99, uuid: 1099, order: 99 }, { query: { _fail: true } })
           .then(() => {
             assert(false, 'Unexpectedly succeeded.');
           })
