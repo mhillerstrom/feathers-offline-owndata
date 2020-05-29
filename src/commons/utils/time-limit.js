@@ -20,12 +20,12 @@ const timeLimit = function (fn, ctx, limit = 500) {
       .then(res => [null, res])
       .catch(err => {
         if (err === 'Timeout') {
-          console.error(`timeLimit(...,${limit}) has sent a TIMEOUT message`);
+          // console.error(`timeLimit(...,${limit}) has sent a TIMEOUT message`);
           return [{ timeout: true, args, limit }, null];
         }
 
         const ok = err._ok;
-        console.error(`timeLimit(...,${limit}) has sent a ${ok ? 'SUCCESS' : 'ERROR'} message`);
+        // console.error(`timeLimit(...,${limit}) has sent a ${ok ? 'SUCCESS' : 'ERROR'} message`);
         delete err._ok;
         if (ok) { return [null, Object.assign({}, err, { limit })]; } else { return [Object.assign({}, err, { limit }), null]; }
       });
