@@ -42,7 +42,7 @@ class Service extends AdapterService {
     this._addQueuedEvent = this._engine._addQueuedEvent.bind(this._engine);
     this._removeQueuedEvent = this._engine._removeQueuedEvent.bind(this._engine);
     this._alwaysSelect = ['id', '_id', 'uuid'];
-    this._getUuid = this._replicator.getUuid;
+    this._getUuid = this._replicator.getUuid.bind(this._replicator);
 
     this.store = this._engine.store || { records: [] };
     this.paginate = options.paginate || {};
@@ -250,7 +250,7 @@ class Service extends AdapterService {
 
     // Optimistic mutation
     const beforeRecord = shallowClone(records[index]);
-    const newData = this._mutateStore('removed', beforeRecord, 1);
+    const oldData = this._mutateStore('removed', beforeRecord, 1);
     this._addQueuedEvent('remove', beforeRecord, id, params);
 
     // Start actual mutation on remote service
@@ -268,7 +268,7 @@ class Service extends AdapterService {
         }
       });
 
-    return Promise.resolve(newData)
+    return Promise.resolve(oldData)
       .then(select(params, ...this._alwaysSelect));
   }
 
