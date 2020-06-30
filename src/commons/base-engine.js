@@ -63,20 +63,26 @@ module.exports = class BaseEngine {
   async processQueuedEvents () {
     debug('processQueuedEvents entered');
 
+    console.error(`ProcessingQueue: this.store.queued.length=${this.store.queued.length}\n${JSON.stringify(this.store.queued,null,2)}`);
     let stop = false;
     while (this.store.queued.length && !stop) {
       const el = this.store.queued.shift();
       const event = el.eventName;
 
-      // remove _fail and _timeout from query
+      // remove _fail and _timeout properties from query (as a courtesy of testing)
       for (const i in el.args) {
         if (el.args[i].query) {
           delete el.args[i].query._fail;
           delete el.args[i].query._timeout;
         }
       }
+      console.error(`ProcessingQueue: event=${event}(${JSON.stringify(el.args[0],null,2)}, ${JSON.stringify(el.args[1],null,2)}, ${JSON.stringify(el.args[2],null,2)})\npath=${this._service.path}`);
       await this._service[event](el.args[0], el.args[1], el.args[2])
-        .catch(() => { this.store.queued.unshift(el); stop = true; });
+        .catch((err) => {
+          console.error(`ProcessingQueue: event=${event} FAILED: reenter ${JSON.stringify(el, null,2)} into queue and STOP!!!\nerror=${JSON.stringify(err,null,2)}`);
+          this.store.queued.unshift(el);
+          stop = true;
+        });
     }
     return true;
   }
@@ -85,6 +91,7 @@ module.exports = class BaseEngine {
     debug('addQueuedEvent entered');
 
     this.store.queued.push({ eventName, record: localRecord, args: { ...args } });
+    console.error(`addQueuedEvent called: LEN=${this.store.queued.length}\nlocalRecord=${JSON.stringify(localRecord,null,2)}`)
   }
 
   _addQueuedNetEvent (eventName, localRecord, ...args) {
@@ -115,13 +122,17 @@ module.exports = class BaseEngine {
   _removeQueuedEvent (eventName, localRecord, updatedAt) {
     debug('removeQueuedEvent entered');
 
-    const idName = this._useUuid ? 'uuid' : ('id' in localRecord ? 'id' : '_id');
+    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}, eventName=${eventName}, updatedAt=${updatedAt}\nlocalRecord=${JSON.stringify(localRecord,null,2)}`)
+    // const idName = this._useUuid ? 'uuid' : ('id' in localRecord ? 'id' : '_id');
+    const idName = ('id' in localRecord ? 'id' : '_id');
     const index = this._findIndexReversed(this.store.queued, qElement => qElement.record[idName] === localRecord[idName] && qElement.eventName === eventName);
 
+    console.error(`removeQueuedEvent called: index=${index}, idName=${idName}`)
     if (index >= 0) {
       this.store.queued.splice(index, 1);
     }
     if (updatedAt) this.store.syncedAt = updatedAt;
+    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}`)
   }
 
   _removeQueuedNetEvent (eventName, localRecord, updatedAt) {
@@ -179,6 +190,7 @@ module.exports = class BaseEngine {
 
   _mutateStore (eventName, remoteRecord, source) {
     debug(`_mutateStore started: ${eventName}`);
+    console.log(`_mutateStore   0: event=${eventName}`);
     const that = this;
 
     const idName = 'id' in remoteRecord ? 'id' : '_id';
@@ -187,6 +199,7 @@ module.exports = class BaseEngine {
     let beforeRecord = null;
 
     const index = this._findIndex(records, record => record[idName] === remoteRecord[idName]);
+    console.log(`_mutateStore   I: index=${JSON.stringify(index)}`);
 
     if (index >= 0) {
       beforeRecord = records[index];
@@ -195,9 +208,11 @@ module.exports = class BaseEngine {
 
     if (eventName === 'removed') {
       if (index >= 0) {
+        console.log(`_mutateStore  IIa: index=${JSON.stringify(index)}`);
         broadcast('remove');
       } else if (source === 0 && (!this._publication || this._publication(remoteRecord))) {
         // Emit service event if it corresponds to a previous optimistic remove
+        console.log(`_mutateStore  IIb: index=${JSON.stringify(index)}`);
         broadcast('remove');
       }
 
@@ -205,6 +220,7 @@ module.exports = class BaseEngine {
     }
 
     if (this._publication && !this._publication(remoteRecord)) {
+      console.log(`_mutateStore III: index=${JSON.stringify(index)}`);
       return index >= 0 ? broadcast('left-pub') : undefined;
     }
 
@@ -215,16 +231,20 @@ module.exports = class BaseEngine {
       records.sort(this._sorter);
     }
 
+    console.log(`_mutateStore  IV: remoteRecord=${JSON.stringify(remoteRecord)}`);
     broadcast('mutated');
 
     return remoteRecord;
 
     function broadcast (action) {
       debug(`emitted ${index} ${eventName} ${action}`);
+      console.log(`broadcast I: index=${index}, action${action}`);
       store.last = { source, action, eventName, record: remoteRecord };
 
       that.emit('events', records, store.last);
+      console.log(`broadcast II: index=${index}, action${action}`);
       that._subscriber(records, store.last);
+      console.log(`broadcast III: index=${index}, action${action}`);
     }
   }
 

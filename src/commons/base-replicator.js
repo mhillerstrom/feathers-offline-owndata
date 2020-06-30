@@ -35,12 +35,12 @@ module.exports = class BaseReplicator {
     }
 
     return snapshot(this._service, query)
-      .then(records => {
+      .then(async records => {
         records = this._publication ? records.filter(this._publication) : records;
         records = this.engine.sorter ? records.sort(this.engine.sorter) : records;
 
         this.engine.snapshot(records);
-        this.engine.processQueuedEvents()
+        await this.engine.processQueuedEvents()
           .catch(err => console.error(`PROCESS_QUEUED_EVENTS ERROR ${JSON.stringify(err)}`));
         this.engine.addListeners();
       });

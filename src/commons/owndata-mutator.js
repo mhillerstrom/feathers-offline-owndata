@@ -65,6 +65,7 @@ class Service extends AdapterService {
   }
 
   async _find (params = {}) {
+    debug('_find(${JSON.stringify(params)})')
     const { query, filters, paginate } = this.filterQuery(params);
     let values = _.values(this.store.records).filter(this.options.matcher(query));
     const total = values.length;
@@ -92,10 +93,12 @@ class Service extends AdapterService {
       return result.data;
     }
 
+    debug('_find: result=${JSON.stringify(result)}')
     return result;
   }
 
   async _get (uuid, params = {}) {
+    debug('_get(${JSON.stringify(uuid)}, ${JSON.stringify(params)})')
     const records = this.store.records;
     const index = findUuidIndex(records, uuid);
 
@@ -103,21 +106,31 @@ class Service extends AdapterService {
       return Promise.reject(new errors.NotFound(`No record found for uuid '${uuid}'`));
     }
 
-    return Promise.resolve(records[index])
-      .then(select(params, ...this._alwaysSelect));
+    const result = Promise.resolve(records[index])
+    .then(select(params, ...this._alwaysSelect));
+
+    debug('_get: result=${JSON.stringify(result)}')
+    return result;
   }
 
+  async create (data, params = {}) {
+    console.log(`owndata-mutator.create: now calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)}`)
+    return this._create(data, params)
+  }
   // Create without hooks and mixins that can be used internally
   async _create (data, params = {}) {
+    debug('Calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)})')
     if (Array.isArray(data)) {
       return Promise.all(data.map(current => this._create(current, params)));
     }
 
+    console.log(`owndata-mutator._create: before _checkConnected data=${JSON.stringify(data)}, connected=${this._replicator.connected}`);
     this._checkConnected();
 
     if (!('uuid' in data)) {
       data.uuid = this._getUuid();
     }
+    console.log(`owndata-mutator._create: after uuid data=${JSON.stringify(data)}`);
 
     const records = this.store.records;
     const index = findUuidIndex(records, data.uuid);
@@ -126,21 +139,29 @@ class Service extends AdapterService {
     }
 
     // optimistic mutation
+    console.log(`owndata-mutator._create: before _mutateStore('created', ${JSON.stringify(data)}, 1)`);
     const newData = this._mutateStore('created', data, 1);
+    console.log(`owndata-create  I: newData=${JSON.stringify(newData)}`);
+    const tmp = select(params, ...this._alwaysSelect)(newData);
+    console.log(`owndata-create II: newData=${JSON.stringify(tmp)}`);
     this._addQueuedEvent('create', newData, shallowClone(newData), params);
+    console.log(`owndata-createIII: newData=${JSON.stringify(tmp)}`);
 
     // Start actual mutation on remote service
     await this.remoteCreate(shallowClone(newData), params)
       .then(([err, res]) => {
         if (err) {
           if (err.timeout) {
+            console.log(`owndata-createIVa: err=${JSON.stringify(err)}`);
             debug(`_create TIMEOUT: ${JSON.stringify(err)}`);
           } else {
+            console.log(`owndata-createIVb: err=${JSON.stringify(err)}`);
             debug(`_create ERROR: ${JSON.stringify(err)}`);
           }
         }
         if (res) {
-          this._removeQueuedEvent('create', newData, res.updatedAt);
+          console.log(`remoteCreate:\n\tres=${JSON.stringify(res.res)}\n\tnewData=${JSON.stringify(newData)}`);
+          this._removeQueuedEvent('create', newData, res.res.updatedAt);
         }
       })
       .catch(err => debug(`_create catch ERROR!!! ${JSON.stringify(err)}`));
@@ -179,7 +200,7 @@ class Service extends AdapterService {
           }
         }
         if (res) {
-          this._removeQueuedEvent('update', shallowClone(newData), res.updatedAt);
+          this._removeQueuedEvent('update', newData, res.updatedAt);
         }
       });
     return Promise.resolve(newData)

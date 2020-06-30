@@ -2,22 +2,22 @@
 import { Params, Paginated, Id, NullableId } from '@feathersjs/feathers';
 import { AdapterService, ServiceOptions, InternalServiceMethods } from '@feathersjs/adapter-commons';
 
-export interface MemoryServiceStore {
+export interface OfflineServiceStore {
   [key: number]: any;
 }
 
-export interface MemoryServiceOptions extends ServiceOptions {
-  store: MemoryServiceStore;
+export interface OfflineServiceOptions extends ServiceOptions {
+  store: OfflineServiceStore;
   startId: number;
   matcher?: (query: any) => any;
   sorter?: (sort: any) => any;
 }
 
 export class Service<T = any> extends AdapterService<T> implements InternalServiceMethods<T> {
-  options: MemoryServiceOptions;
-  store: MemoryServiceStore;
+  options: OfflineServiceOptions;
+  store: OfflineServiceStore;
 
-  constructor(config?: Partial<MemoryServiceOptions>);
+  constructor(config?: Partial<OfflineServiceOptions>);
 
   _find(params?: Params): Promise<T | T[] | Paginated<T>>;
   _get(id: Id, params?: Params): Promise<T>;
@@ -27,5 +27,5 @@ export class Service<T = any> extends AdapterService<T> implements InternalServi
   _remove(id: NullableId, params?: Params): Promise<T>;
 }
 
-declare const init: ((config?: Partial<MemoryServiceOptions>) => Service);
+declare const init: ((config?: Partial<OfflineServiceOptions>) => Service);
 export default init;
