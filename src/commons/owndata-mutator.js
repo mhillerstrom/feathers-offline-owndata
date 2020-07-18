@@ -5,7 +5,7 @@ const errors = require('@feathersjs/errors');
 const { _ } = require('@feathersjs/commons');
 const { sorter, select, AdapterService } = require('@feathersjs/adapter-commons');
 const sift = require('sift').default;
-const { timeLimit } = require('./utils/');
+// const { timeLimit } = require('./utils/');
 const makeDebug = require('debug');
 const debug = makeDebug('owndata-mutator');
 
@@ -13,6 +13,10 @@ const _select = (data, ...args) => {
   const base = select(...args);
 
   return base(JSON.parse(JSON.stringify(data)));
+};
+
+const to = function (promise) {
+  return promise.then(result => [null, result]).catch(err => [err, null]);
 };
 
 class Service extends AdapterService {
@@ -49,10 +53,11 @@ class Service extends AdapterService {
 
     // We need time-limited versions of the remote service methods
     const ctx = this._replicator._service;
-    this.remoteCreate = timeLimit(ctx.create, ctx, timeout);
-    this.remotePatch = timeLimit(ctx.patch, ctx, timeout);
-    this.remoteUpdate = timeLimit(ctx.update, ctx, timeout);
-    this.remoteRemove = timeLimit(ctx.remove, ctx, timeout);
+    ctx.timeout = timeout;
+    this.remoteCreate = ctx.create;
+    this.remotePatch = ctx.patch;
+    this.remoteUpdate = ctx.update;
+    this.remoteRemove = ctx.remove;
   }
 
   async getEntries (params = {}) {
@@ -65,7 +70,7 @@ class Service extends AdapterService {
   }
 
   async _find (params = {}) {
-    debug('_find(${JSON.stringify(params)})')
+    debug(`_find(${JSON.stringify(params)})`);
     const { query, filters, paginate } = this.filterQuery(params);
     let values = _.values(this.store.records).filter(this.options.matcher(query));
     const total = values.length;
@@ -93,12 +98,12 @@ class Service extends AdapterService {
       return result.data;
     }
 
-    debug('_find: result=${JSON.stringify(result)}')
+    debug(`_find: result=${JSON.stringify(result)}`);
     return result;
   }
 
   async _get (uuid, params = {}) {
-    debug('_get(${JSON.stringify(uuid)}, ${JSON.stringify(params)})')
+    debug(`_get(${JSON.stringify(uuid)}, ${JSON.stringify(params)})`);
     const records = this.store.records;
     const index = findUuidIndex(records, uuid);
 
@@ -107,19 +112,19 @@ class Service extends AdapterService {
     }
 
     const result = Promise.resolve(records[index])
-    .then(select(params, ...this._alwaysSelect));
+      .then(select(params, ...this._alwaysSelect));
 
-    debug('_get: result=${JSON.stringify(result)}')
+    debug(`_get: result=${JSON.stringify(result)}`);
     return result;
   }
 
-  async create (data, params = {}) {
-    console.log(`owndata-mutator.create: now calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)}`)
-    return this._create(data, params)
-  }
+  // async create (data, params = {}) {
+  //   console.log(`owndata-mutator.create: now calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)}`);
+  // }
+
   // Create without hooks and mixins that can be used internally
   async _create (data, params = {}) {
-    debug('Calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)})')
+    debug(`Calling _create(${JSON.stringify(data)}, ${JSON.stringify(params)})`);
     if (Array.isArray(data)) {
       return Promise.all(data.map(current => this._create(current, params)));
     }
@@ -148,23 +153,21 @@ class Service extends AdapterService {
     console.log(`owndata-createIII: newData=${JSON.stringify(tmp)}`);
 
     // Start actual mutation on remote service
-    await this.remoteCreate(shallowClone(newData), params)
-      .then(([err, res]) => {
-        if (err) {
-          if (err.timeout) {
-            console.log(`owndata-createIVa: err=${JSON.stringify(err)}`);
-            debug(`_create TIMEOUT: ${JSON.stringify(err)}`);
-          } else {
-            console.log(`owndata-createIVb: err=${JSON.stringify(err)}`);
-            debug(`_create ERROR: ${JSON.stringify(err)}`);
-          }
-        }
-        if (res) {
-          console.log(`remoteCreate:\n\tres=${JSON.stringify(res.res)}\n\tnewData=${JSON.stringify(newData)}`);
-          this._removeQueuedEvent('create', newData, res.res.updatedAt);
-        }
-      })
-      .catch(err => debug(`_create catch ERROR!!! ${JSON.stringify(err)}`));
+    const [err, res] = await to(this._replicator._service.create(shallowClone(newData), params));
+
+    if (err) {
+      if (err.timeout) {
+        console.log(`owndata-createIVa: err=${JSON.stringify(err)}`);
+        debug(`_create TIMEOUT: ${JSON.stringify(err)}`);
+      } else {
+        console.log(`owndata-createIVb: err=${JSON.stringify(err)}`);
+        debug(`_create ERROR: ${JSON.stringify(err)}`);
+      }
+    }
+    if (res) {
+      console.log(`remoteCreate:\n\tres=${JSON.stringify(res)}\n\tnewData=${JSON.stringify(newData)}`);
+      this._removeQueuedEvent('create', newData, res.updatedAt);
+    }
 
     return Promise.resolve(newData)
       .then(select(params, ...this._alwaysSelect));
@@ -190,19 +193,18 @@ class Service extends AdapterService {
     this._addQueuedEvent('update', newData, getId(newData), shallowClone(newData), params);
 
     // Start actual mutation on remote service
-    await this.remoteUpdate(getId(newData), shallowClone(newData), params)
-      .then(([err, res]) => {
-        if (err) {
-          if (err.timeout) {
-            debug(`_update TIMEOUT: ${JSON.stringify(err)}`);
-          } else {
-            debug(`_update ERROR: ${JSON.stringify(err)}`);
-          }
-        }
-        if (res) {
-          this._removeQueuedEvent('update', newData, res.updatedAt);
-        }
-      });
+    const [err, res] = await to(this._replicator._service.update(getId(newData) + 0, shallowClone(newData), params));
+    if (err) {
+      if (err.timeout) {
+        debug(`_update TIMEOUT: ${JSON.stringify(err)}`);
+      } else {
+        debug(`_update ERROR: ${JSON.stringify(err)}`);
+      }
+    }
+    if (res) {
+      this._removeQueuedEvent('update', newData, res.updatedAt);
+    }
+
     return Promise.resolve(newData)
       .then(select(params, ...this._alwaysSelect));
   }
@@ -232,19 +234,17 @@ class Service extends AdapterService {
     this._addQueuedEvent('patch', newData, getId(newData), shallowClone(newData), params);
 
     // Start actual mutation on remote service
-    await this.remotePatch(getId(newData), shallowClone(newData), params)
-      .then(([err, res]) => {
-        if (err) {
-          if (err.timeout) {
-            debug(`_patch TIMEOUT: ${JSON.stringify(err)}`);
-          } else {
-            debug(`_patch ERROR: ${JSON.stringify(err)}`);
-          }
-        }
-        if (res) {
-          this._removeQueuedEvent('patch', newData, res.updatedAt);
-        }
-      });
+    const [err, res] = await to(this._replicator._service.patch(getId(newData), shallowClone(newData), params));
+    if (err) {
+      if (err.timeout) {
+        debug(`_patch TIMEOUT: ${JSON.stringify(err)}`);
+      } else {
+        debug(`_patch ERROR: ${JSON.stringify(err)}`);
+      }
+    }
+    if (res) {
+      this._removeQueuedEvent('patch', newData, res.updatedAt);
+    }
 
     return Promise.resolve(newData)
       .then(select(params, ...this._alwaysSelect));
@@ -275,19 +275,17 @@ class Service extends AdapterService {
     this._addQueuedEvent('remove', beforeRecord, id, params);
 
     // Start actual mutation on remote service
-    await this.remoteRemove(id, params)
-      .then(([err, res]) => {
-        if (err) {
-          if (err.timeout) {
-            debug(`_remove TIMEOUT: ${JSON.stringify(err)}`);
-          } else {
-            debug(`_remove ERROR: ${JSON.stringify(err)}`);
-          }
-        }
-        if (res) {
-          this._removeQueuedEvent('remove', beforeRecord, null);
-        }
-      });
+    const [err, res] = await to(this._replicator._service.remove(id, params));
+    if (err) {
+      if (err.timeout) {
+        debug(`_remove TIMEOUT: ${JSON.stringify(err)}`);
+      } else {
+        debug(`_remove ERROR: ${JSON.stringify(err)}`);
+      }
+    }
+    if (res) {
+      this._removeQueuedEvent('remove', beforeRecord, null);
+    }
 
     return Promise.resolve(oldData)
       .then(select(params, ...this._alwaysSelect));

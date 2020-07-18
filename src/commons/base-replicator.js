@@ -40,8 +40,8 @@ module.exports = class BaseReplicator {
         records = this.engine.sorter ? records.sort(this.engine.sorter) : records;
 
         this.engine.snapshot(records);
-        await this.engine.processQueuedEvents()
-          .catch(err => console.error(`PROCESS_QUEUED_EVENTS ERROR ${JSON.stringify(err)}`));
+        const ok = await this.engine.processQueuedEvents();
+        if (!ok) { console.error('PROCESS_QUEUED_EVENTS ERROR.'); }
         this.engine.addListeners();
       });
   }

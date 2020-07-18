@@ -101,7 +101,7 @@ function fromServiceNonPaginatedConfig () {
 }
 
 module.exports = function (Replicator, desc) {
-  describe(`${desc} - optimistic mutation online`, () => {
+  describe(`${desc} - optimistic mutation`, () => {
     let data;
     let fromService;
     let replicator;
@@ -513,8 +513,9 @@ module.exports = function (Replicator, desc) {
           .then(() => getRows(clientService))
           .then(delay())
           .then(rows => { clientRows = rows; })
+        // Now synchronize
           .then(() => replicator.connect())
-          .then(delay(20))
+          .then(delay(40))
         // See changes after synchronization
           .then(() => getRows(fromService))
           .then(delay())

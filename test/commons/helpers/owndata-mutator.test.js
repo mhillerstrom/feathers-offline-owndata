@@ -9,11 +9,10 @@ const { omit, remove } = _;
 
 const sampleLen = 5; // Size of test database (backend)
 const verbose = false; // Should the test be chatty?
-const timeout = 400; // How patient should the client be?
-const serverTimeout = 5000; // The default Feathers backend timeout
+const timeout = 200; // How patient should the client be?
+const serverTimeout = 2000; // The default Feathers backend timeout
 
 let app;
-let clientService;
 
 function services1 () {
   app = this;
@@ -28,7 +27,7 @@ async function getRows (service) {
 }
 
 /**
- * This sets up a before ans error hook for all functions for a given service. The hook
+ * This sets up a before all and error hook for all functions for a given service. The hook
  * can simulate e.g. backend failure by supplying {query: {_fail:true}} to the
  * calls or network connection trouble by supplying {query: {_fail:true, _timeout: true}}.
  * If _fail is false or the query is not supplied all this hook is bypassed.
@@ -98,13 +97,14 @@ function fromServiceNonPaginatedConfig () {
 }
 
 module.exports = function (Replicator, desc) {
-  describe(`${desc} - optimistic mutation online`, () => {
+  describe(`${desc} - optimistic mutation`, () => {
     let data;
-    let fromService;
     let replicator;
+    let fromService;
+    let clientService;
 
     beforeEach(() => {
-      const app = feathers()
+      app = feathers()
         .configure(services1);
 
       fromService = app.service('from');
@@ -214,6 +214,7 @@ module.exports = function (Replicator, desc) {
             data[sampleLen] = { id: 99, uuid: 1099, order: 99 };
 
             assertDeepEqualExcept([result], [{ id: 99, uuid: 1099, order: 99 }], ['updatedAt']);
+            console.error(`***\n**** events = ${JSON.stringify(events)}\n***`);
             assertDeepEqualExcept(events, [
               { action: 'snapshot' },
               { action: 'add-listeners' },
@@ -418,8 +419,9 @@ module.exports = function (Replicator, desc) {
       });
     });
 
-    describe('without publication & remote error (timeout)', () => {
+    describe('without publication & remote error (timeout)', function () {
       let events;
+      this.timeout(0);
 
       beforeEach(() => {
         events = [];
@@ -490,7 +492,9 @@ module.exports = function (Replicator, desc) {
         let clientRows = null;
 
         return replicator.connect()
+          .then(() => console.log('Before clientService.update...'))
           .then(() => clientService.update(0, { id: 0, uuid: 1000, order: 99 }, { query: { _fail: true, _timeout: true } }))
+          .then(() => console.log('...and after clientService.update.'))
           .then(delay())
           .then(() => {
             assertDeepEqualExcept(events, [
@@ -499,19 +503,32 @@ module.exports = function (Replicator, desc) {
               { source: 1, eventName: 'updated', action: 'mutated', record: { id: 0, uuid: 1000, order: 99 } }
             ], ['updatedAt']);
           })
-        // We have simulated offline - make sure remote data has not yet changed...
+          // --->>>
+          // Current client side store status
+          .then(() => getRows(clientService))
+          .then(delay())
+          .then(rows => {
+            console.error(`************\nclientRows: ${JSON.stringify(rows, null, 2)}\n***********`);
+          })
+          // ---<<<
+          // We have simulated offline - make sure remote data has not yet changed...
           .then(() => getRows(fromService))
           .then(delay())
           .then(fromRows => {
             assert.lengthOf(fromRows, sampleLen);
+            console.error(`************\nfromRows: ${JSON.stringify(fromRows, null, 2)}\n***********`);
             assertDeepEqualExcept(fromRows, data, ['updatedAt']);
           })
         // Current client side store status
           .then(() => getRows(clientService))
           .then(delay())
-          .then(rows => { clientRows = rows; })
+          .then(rows => {
+            clientRows = rows;
+            console.error(`************\nclientRows: ${JSON.stringify(clientRows, null, 2)}\n***********`);
+          })
+        // Now synchronize
           .then(() => replicator.connect())
-          .then(delay(20))
+          .then(delay(40))
         // See changes after synchronization
           .then(() => getRows(fromService))
           .then(delay())
@@ -564,6 +581,7 @@ module.exports = function (Replicator, desc) {
 
       it('remove works and sync recovers', () => {
         let clientRows = null;
+        let fromRows = null;
 
         return replicator.connect()
           .then(() => clientService.remove(2, { query: { _fail: true, _timeout: true } }))
@@ -587,7 +605,8 @@ module.exports = function (Replicator, desc) {
         // We have simulated offline - make sure remote data has not yet changed...
           .then(() => getRows(fromService))
           .then(delay())
-          .then(fromRows => {
+          .then(rows => {
+            fromRows = rows;
             assert.lengthOf(fromRows, sampleLen);
             assertDeepEqualExcept(fromRows, data, ['updatedAt']);
           })
@@ -595,6 +614,7 @@ module.exports = function (Replicator, desc) {
           .then(() => getRows(clientService))
           .then(delay())
           .then(rows => { clientRows = rows; })
+        // Now synchronize
           .then(() => replicator.connect())
           .then(delay(20))
         // See changes after synchronization
@@ -609,8 +629,9 @@ module.exports = function (Replicator, desc) {
       });
     });
 
-    describe('test of sync', () => {
+    describe('test of sync', function () {
       let events;
+      this.timeout(0);
 
       beforeEach(() => {
         events = [];

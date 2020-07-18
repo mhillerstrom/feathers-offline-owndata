@@ -2,7 +2,7 @@
 const assert = require('chai').assert;
 const { hash, hashOfRecord, genUuid } = require('../src/commons/utils');
 
-describe('utils-cryptographic:', () => {
+describe('utils-cryptographic', () => {
   it('hash hashes a string consistently', () => {
     const str = JSON.stringify({ a: 'a', b: true });
     const hash1 = hash(str);

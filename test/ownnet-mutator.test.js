@@ -1,5 +1,5 @@
 
 const test = require('./commons/helpers/ownnet-mutator.test.js');
-const Ownnet = require('../src');
+const Realtime = require('../src');
 
-test(Ownnet, 'ownnet');
+test(Realtime, 'ownnet');

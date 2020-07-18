@@ -63,7 +63,7 @@ module.exports = class BaseEngine {
   async processQueuedEvents () {
     debug('processQueuedEvents entered');
 
-    console.error(`ProcessingQueue: this.store.queued.length=${this.store.queued.length}\n${JSON.stringify(this.store.queued,null,2)}`);
+    console.error(`ProcessingQueue: this.store.queued.length=${this.store.queued.length}\n${JSON.stringify(this.store.queued, null, 2)}`);
     let stop = false;
     while (this.store.queued.length && !stop) {
       const el = this.store.queued.shift();
@@ -76,22 +76,22 @@ module.exports = class BaseEngine {
           delete el.args[i].query._timeout;
         }
       }
-      console.error(`ProcessingQueue: event=${event}(${JSON.stringify(el.args[0],null,2)}, ${JSON.stringify(el.args[1],null,2)}, ${JSON.stringify(el.args[2],null,2)})\npath=${this._service.path}`);
+      console.error(`ProcessingQueue: event=${event}(${JSON.stringify(el.args[0], null, 2)}, ${JSON.stringify(el.args[1], null, 2)}, ${JSON.stringify(el.args[2], null, 2)})\npath=${this._service.path}`);
       await this._service[event](el.args[0], el.args[1], el.args[2])
         .catch((err) => {
-          console.error(`ProcessingQueue: event=${event} FAILED: reenter ${JSON.stringify(el, null,2)} into queue and STOP!!!\nerror=${JSON.stringify(err,null,2)}`);
+          console.error(`ProcessingQueue: event=${event} FAILED: reenter ${JSON.stringify(el, null, 2)} into queue and STOP!!!\nerror=${JSON.stringify(err, null, 2)}`);
           this.store.queued.unshift(el);
           stop = true;
         });
     }
-    return true;
+    return !stop;
   }
 
   _addQueuedEvent (eventName, localRecord, ...args) {
     debug('addQueuedEvent entered');
 
     this.store.queued.push({ eventName, record: localRecord, args: { ...args } });
-    console.error(`addQueuedEvent called: LEN=${this.store.queued.length}\nlocalRecord=${JSON.stringify(localRecord,null,2)}`)
+    console.error(`addQueuedEvent called: LEN=${this.store.queued.length}\nlocalRecord=${JSON.stringify(localRecord, null, 2)}`);
   }
 
   _addQueuedNetEvent (eventName, localRecord, ...args) {
@@ -122,17 +122,17 @@ module.exports = class BaseEngine {
   _removeQueuedEvent (eventName, localRecord, updatedAt) {
     debug('removeQueuedEvent entered');
 
-    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}, eventName=${eventName}, updatedAt=${updatedAt}\nlocalRecord=${JSON.stringify(localRecord,null,2)}`)
+    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}, eventName=${eventName}, updatedAt=${updatedAt}\nlocalRecord=${JSON.stringify(localRecord, null, 2)}`);
     // const idName = this._useUuid ? 'uuid' : ('id' in localRecord ? 'id' : '_id');
     const idName = ('id' in localRecord ? 'id' : '_id');
     const index = this._findIndexReversed(this.store.queued, qElement => qElement.record[idName] === localRecord[idName] && qElement.eventName === eventName);
 
-    console.error(`removeQueuedEvent called: index=${index}, idName=${idName}`)
+    console.error(`removeQueuedEvent called: index=${index}, idName=${idName}`);
     if (index >= 0) {
       this.store.queued.splice(index, 1);
     }
     if (updatedAt) this.store.syncedAt = updatedAt;
-    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}`)
+    console.error(`removeQueuedEvent called: LEN=${this.store.queued.length}`);
   }
 
   _removeQueuedNetEvent (eventName, localRecord, updatedAt) {

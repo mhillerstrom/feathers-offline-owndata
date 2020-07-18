@@ -2,7 +2,7 @@
 const assert = require('chai').assert;
 const { isObject, stripProps } = require('../src/commons/utils');
 
-describe('utils-misc:', () => {
+describe('utils-misc', () => {
   it('isObject works', () => {
     assert.isOk(isObject({}));
     assert.isNotOk(isObject([]));
