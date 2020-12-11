@@ -7,6 +7,31 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Mocha all tests",
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+         "--opts",
+         "${workspaceFolder}/mocha.opts",
+         "${workspaceRoot}/src/app/**/*.spec.ts"
+      ],
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Current File",
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+         "--opts",
+         "${workspaceFolder}/mocha.opts",
+         "${file}"
+       ],
+       "cwd": "${workspaceRoot}"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Mocha Tests",
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "sourceMaps": true,
